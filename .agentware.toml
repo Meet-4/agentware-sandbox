@@ -1,0 +1,3 @@
+# Agentware 2026 submission config
+track = "developer-workflow"
+pitch = "An unattended PR-triage agent: deterministic security triage first, LLM explanation second, and hard-coded stops — it reviews, labels, and only ever pushes whitelisted trivial fixes, leaving a hash-chained audit trail."
