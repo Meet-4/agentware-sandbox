@@ -24,10 +24,20 @@ from pathlib import Path
 from .safety import KillSwitch, Policy, risky_path
 
 TYPO_MAP = {
-    "teh": "the", "recieve": "receive", "seperate": "separate",
-    "occured": "occurred", "wich": "which", "begining": "beginning",
+    "teh": "the", "recieve": "receive", "recieves": "receives",
+    "seperate": "separate", "seperates": "separates",
+    "occured": "occurred", "occureds": "occurreds",
+    "wich": "which", "begining": "beginning",
 }
-TYPO_RE = re.compile(r"\b(" + "|".join(TYPO_MAP) + r")\b", re.IGNORECASE)
+TYPO_RE = re.compile(r"\b(" + "|".join(sorted(TYPO_MAP, key=len, reverse=True))
+                     + r")\b", re.IGNORECASE)
+
+
+def _typo_repl(m: re.Match) -> str:
+    fixed = TYPO_MAP[m.group(0).lower()]
+    if m.group(0)[0].isupper():
+        fixed = fixed.capitalize()
+    return fixed
 
 
 @dataclass
@@ -48,7 +58,7 @@ def fix_text(name: str, text: str) -> tuple[str, list[str]]:
     base = os.path.basename(name)
 
     if base.endswith((".md", ".rst")) or base.upper().startswith("README"):
-        new = TYPO_RE.sub(lambda m: TYPO_MAP[m.group(0).lower()], text)
+        new = TYPO_RE.sub(_typo_repl, text)
         if new != text:
             text, _ = new, classes.append("docs-typo")
 

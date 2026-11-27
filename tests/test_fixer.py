@@ -18,6 +18,11 @@ def test_docs_typo_fixed():
     assert "the the docs receive input\n" == text
 
 
+def test_docs_typo_plural_and_case():
+    text, _ = fix_text("g.md", "Teh module recieves and Seperates values.\n")
+    assert text == "The module receives and Separates values.\n"
+
+
 def test_lint_fix_trailing_whitespace_and_newline():
     text, classes = fix_text("code.py", "x = 1   \ny = 2")
     assert "lint-fix" in classes
