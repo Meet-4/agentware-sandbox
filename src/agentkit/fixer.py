@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -122,17 +123,18 @@ def worktree_for_pr(clone_dir: Path, pr_number: int,
 
 def verify_worktree(wt: Path) -> tuple[bool, str]:
     """Compile every .py, then run the project's own test suite if present."""
+    python = os.environ.get("PYTHON") or sys.executable
     for py in wt.rglob("*.py"):
         if ".git" in py.parts:
             continue
         c = subprocess.run(
-            [os.environ.get("PYTHON", "python"), "-m", "py_compile", str(py)],
+            [python, "-m", "py_compile", str(py)],
             capture_output=True, text=True, timeout=60)
         if c.returncode != 0:
             return False, f"py_compile failed on {py.relative_to(wt)}: {c.stderr[:300]}"
     if (wt / "tests").is_dir() or list(wt.glob("test_*.py")):
         t = subprocess.run(
-            [os.environ.get("PYTHON", "python"), "-m", "pytest", "-q", "--no-header"],
+            [python, "-m", "pytest", "-q", "--no-header"],
             cwd=str(wt), capture_output=True, text=True, timeout=600)
         if t.returncode != 0:
             return False, f"project tests failed:\n{t.stdout[-800:]}{t.stderr[-400:]}"

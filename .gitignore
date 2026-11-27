@@ -1,4 +1,6 @@
 .env
+.env.l1
+.wt-scratch/
 __pycache__/
 *.pyc
 .pytest_cache/
