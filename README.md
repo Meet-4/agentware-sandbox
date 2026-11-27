@@ -31,6 +31,18 @@ whitelisted trivial fixes. Everything else is drafted, never pushed.
 - The LLM layer explains findings; it never gates a push — deterministic
   code does (see SAFETY.md).
 
+## Evidence (live, unattended runs)
+
+- PR triage + posted review: https://github.com/Meet-4/agentware-sandbox/pull/1
+  (comments posted via webhook, direct CLI, and polling; trace chains in
+  `traces/webhook-smoke-2026-11-28/`).
+- **L1 autonomous fix (no human mid-run)**: https://github.com/Meet-4/agentware-sandbox/pull/2 —
+  the agent triaged the PR, planned whitelisted fixes (`docs-typo`, `lint-fix`),
+  applied them in an isolated git worktree, ran the project's own test suite,
+  and pushed only after the gate was green (commits
+  `agent: apply whitelisted fixes ... [autonomous L1]`). Trace chain:
+  `traces/l1-autofix-2026-11-28/` (verified via `--verify`).
+
 ## Quick start (<15 min)
 
 ```bash
