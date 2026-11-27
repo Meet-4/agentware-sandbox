@@ -61,7 +61,9 @@ def run(case: ReviewCase, cfg: dict, out_dir: Path,
                         decision="LLM text contained a forbidden phrase; "
                                  "replaced with heuristic-only review")
         trace.event("review_drafted", decision="comment text ready",
-                    llm_used=bool(cfg.get("LLM_API_KEY")))
+                    llm_used=bool(cfg.get("LLM_API_KEY")),
+                    cost_usd=budget._cost,
+                    llm_calls=budget._llm_calls)
 
         labels = suggested_labels(case)
         kill.check()
