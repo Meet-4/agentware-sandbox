@@ -1,0 +1,1 @@
+{"ts": 1795810831.234, "seq": 0, "event": "killed", "reason": "kill switch flag file present", "note": "kill switch fired; audit entry written on stop", "prev_hash": "GENESIS", "entry_hash": "efdbeba49f457532b546d7718e1ce1fdf19c8286f23b65b9ada84d4c2ded8c73"}
