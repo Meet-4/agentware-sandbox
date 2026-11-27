@@ -28,9 +28,22 @@ Per run: max LLM calls, max wall-clock minutes, max USD cost (from `.env`,
 defaults 25 calls / 10 min / $0.50). Exceeded → graceful STOP, trace says so.
 
 ## Kill switch
-- `traces/RUN-<id>/KILL` flag file — checked **between every pipeline step**;
-- `GET /stop` on the local control port (default 8765) when webhook mode runs.
+- Per-run `traces/<run-id>/KILL` flag file — checked **between every pipeline step**.
+- `GET /stop` on the local control port (default 8765) when webhook mode
+  runs: writes a global `traces/KILL` flag every live run checks between
+  steps; the flag auto-clears after 120 s so the operator does not have to.
+- Evidence: `traces/webhook-smoke-2026-11-28/` — a real run killed
+  mid-flight via `/stop`, audit entry written, chain verifies.
 Either cancels pending work immediately; an audit entry is always written.
+
+## Trigger modes (both unattended)
+- `python -m agentkit.trigger serve` — webhook server: POST /webhook
+  (HMAC-SHA256 verified when WEBHOOK_SECRET is set, repo-gated to
+  TARGET_REPO, only the PR number is read from the payload),
+  GET /stop (kill), GET /health, GET /runs.
+- `python -m agentkit.trigger poll --interval 300` — no public endpoint
+  needed (judge mode): polls TARGET_REPO open PRs and triages new ones,
+  dedup via an on-disk state file.
 
 ## Audit trail
 `traces/<run-id>.jsonl` — one event per line, SHA-256 **hash-chained**
