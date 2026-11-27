@@ -97,6 +97,8 @@ class Budget:
         self._start = time.time()
 
     def spend(self, cost_usd: float = 0.0) -> None:
+        if not self._start:  # defensive: unstarted budget counts from now
+            self._start = time.time()
         self._llm_calls += 1
         self._cost += cost_usd
         if self._llm_calls > self.max_llm_calls:

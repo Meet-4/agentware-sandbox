@@ -17,7 +17,8 @@ POSTINSTALL_RE = re.compile(r'"postinstall"\s*:\s*"(.*)"', re.DOTALL)
 NET_SCRIPT_RE = re.compile(
     r"fetch\(|curl\s|wget\s|http://|https://|child_process|process\.env", re.IGNORECASE
 )
-DEP_BUMP_RE = re.compile(r'^\s*[-+]\s*"(?P<name>[^"]+)":\s*"(?P<from>[^"]+)"', re.MULTILINE)
+DEP_BUMP_RE = re.compile(
+    r'^\s*[-+]\s*"(?P<name>[^"]+)":\s*"(?P<from>[\^~]?[\dx][\d.*-]*)"', re.MULTILINE)
 
 INJECTION_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("instructs the reviewer to approve/auto-merge",
