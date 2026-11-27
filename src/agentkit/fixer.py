@@ -106,8 +106,7 @@ def worktree_for_pr(clone_dir: Path, pr_number: int,
                     scratch: Path | None = None) -> tuple[Path, str]:
     """Fetch the PR head ref and materialize an isolated worktree.
     Returns (worktree_path, head_sha). Raises on any git failure."""
-    r = _git(clone_dir, "fetch", "origin", f"refs/pull/{pr_number}/head",
-             "FETCH_HEAD")
+    r = _git(clone_dir, "fetch", "origin", f"refs/pull/{pr_number}/head")
     if r.returncode != 0:
         raise RuntimeError(f"git fetch failed: {r.stderr.strip()}")
     sha = _git(clone_dir, "rev-parse", "FETCH_HEAD")

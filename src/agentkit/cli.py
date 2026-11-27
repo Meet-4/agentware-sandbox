@@ -66,7 +66,9 @@ def main(argv: list[str] | None = None) -> int:
                      "User-Agent": "agentkit-triage/0.1"})
         with urllib.request.urlopen(req, timeout=60) as resp:
             case.diff = resp.read().decode(errors="replace")
-        res = run(case, cfg, args.out, gh=gh, repo=repo, pr_number=args.pr)
+        res = run(case, cfg, args.out, gh=gh, repo=repo, pr_number=args.pr,
+                  pr_head=pr.get("head", {}).get("ref"),
+                  clone_dir=Path.cwd())
         print(res["review"] or f"status={res['status']}")
         return 0 if res["status"] == "ok" else 1
 

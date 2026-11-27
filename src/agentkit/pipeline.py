@@ -6,6 +6,7 @@ import time
 import uuid
 from pathlib import Path
 
+from .fixer import maybe_autofix
 from .github_client import GitHubClient
 from .llm import compose_review
 from .safety import (Budget, KillSwitch, Policy, gate_action_text,
@@ -27,7 +28,8 @@ def load_env(path: Path) -> dict:
 
 def run(case: ReviewCase, cfg: dict, out_dir: Path,
         gh: GitHubClient | None, repo: str | None = None,
-        pr_number: int | None = None) -> dict:
+        pr_number: int | None = None, pr_head: str | None = None,
+        clone_dir: Path | None = None) -> dict:
     run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
     trace = Trace(run_id=run_id, out_dir=out_dir)
     policy = Policy(autonomy=cfg.get("AUTONOMY_LEVEL", "L0"))
@@ -76,9 +78,28 @@ def run(case: ReviewCase, cfg: dict, out_dir: Path,
             trace.event("dry_run", decision="no token/repo — review kept local",
                         labels=labels)
 
+        # L1 auto-fix path (post-review, still inside budget + kill switch)
+        fix_result = None
+        if (policy.autonomy == "L1" and gh and repo and pr_number is not None
+                and pr_head and cfg.get("GITHUB_TOKEN")):
+            try:
+                files: dict[str, str] = {}
+                for f in (gh.list_pr_files(repo, pr_number) or []):
+                    name = f.get("filename", "")
+                    if f.get("status") not in ("added", "modified"):
+                        continue  # removals/renames are never auto-touched
+                    files[name] = gh.get_file_content(repo, name, pr_head)
+                fix_result = maybe_autofix(
+                    policy, files, clone_dir or Path.cwd(), pr_number,
+                    pr_head, kill, trace, scratch=out_dir / ".wt-scratch")
+            except Exception as e:  # fix failure never fails the run
+                trace.event("autofix_error", error=repr(e)[:300],
+                            decision="review already delivered; fix path aborted")
+
         trace.event("run_end", status="ok",
                     blockers=sum(1 for f in case.findings
-                                 if f.severity == "blocker"))
+                                  if f.severity == "blocker"),
+                    autofix=(fix_result or {}).get("action", "n/a"))
         trace.summary(
             f"## Run {run_id} — {case.title}\n"
             f"- Input: {case.kind} from {case.author or 'unknown'} (UNTRUSTED, quoted as data)\n"

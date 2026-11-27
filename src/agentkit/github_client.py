@@ -47,3 +47,19 @@ class GitHubClient:
     def add_labels(self, repo: str, number: int, labels: list[str]) -> dict:
         self._assert_target(repo)
         return self._req("POST", f"/repos/{repo}/issues/{number}/labels", labels)
+
+    def list_pr_files(self, repo: str, number: int):
+        """First page of changed files in a PR (path, contents via patch)."""
+        self._assert_target(repo)
+        files = self._req(  # type: ignore[assignment]
+            "GET", f"/repos/{repo}/pulls/{number}/files?per_page=100")
+        return files
+
+    def get_file_content(self, repo: str, path: str, ref: str) -> str:
+        """Full content of one file at a ref (base64 API decode)."""
+        self._assert_target(repo)
+        import base64
+        import urllib.parse
+        q = urllib.parse.quote(path, safe="/")
+        data = self._req("GET", f"/repos/{repo}/contents/{q}?ref={ref}")
+        return base64.b64decode(data["content"]).decode(errors="replace")
