@@ -123,7 +123,15 @@ class KillSwitch:
 
     @property
     def active(self) -> bool:
-        return bool(self.path and self.path.exists())
+        if self.path and self.path.exists():
+            return True
+        # global stop flag (trigger server /stop): kills every live run
+        if self.path is not None:
+            for cand in (self.path.parent / "KILL",
+                         self.path.parent.parent / "KILL"):
+                if cand.exists():
+                    return True
+        return False
 
     def check(self) -> None:
         if self.active:
