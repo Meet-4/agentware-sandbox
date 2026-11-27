@@ -68,10 +68,11 @@ def _init_repo(tmp: Path) -> Path:
            capture_output=True)
     (seed / "README.md").write_text("teh readme recieves data  \n")
     for cmd in (["git", "add", "-A"],
-                ["git", "-c", "user.name=t", "-c", "user.email=t@t",
+                ["git", "-c", "user.name=t", "-c", "user.email=t",
                  "commit", "-m", "init"],
                 ["git", "push", "origin", "HEAD:refs/heads/main",
-                 "HEAD:refs/heads/feature"]):
+                 "HEAD:refs/heads/feature",
+                 "HEAD:refs/pull/7/head", "HEAD:refs/pull/9/head"]):
         sp.run(cmd, cwd=str(seed), check=True, capture_output=True)
     return origin
 
@@ -81,10 +82,6 @@ def test_worktree_and_verify_green(tmp_path):
     origin = _init_repo(tmp_path)
     clone = tmp_path / "clone"
     sp.run(["git", "clone", str(origin), str(clone)], check=True,
-           capture_output=True)
-    # simulate the PR ref
-    sp.run(["git", "-C", str(clone), "fetch", "origin",
-            "refs/heads/feature:refs/pull/7/head"], check=True,
            capture_output=True)
     wt, sha = worktree_for_pr(clone, 7, scratch=tmp_path / "wt")
     assert (wt / "README.md").exists() and len(sha) == 40
@@ -103,9 +100,6 @@ def test_verify_catches_broken_python(tmp_path):
     origin = _init_repo(tmp_path)
     clone = tmp_path / "clone"
     sp.run(["git", "clone", str(origin), str(clone)], check=True,
-           capture_output=True)
-    sp.run(["git", "-C", str(clone), "fetch", "origin",
-            "refs/heads/feature:refs/pull/9/head"], check=True,
            capture_output=True)
     wt, _ = worktree_for_pr(clone, 9, scratch=tmp_path / "wt")
     (wt / "bad.py").write_text("def f(:\n")
