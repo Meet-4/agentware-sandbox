@@ -16,9 +16,10 @@ our own audit — the traces and PRs are the receipts.
   agent-pushed commits (traces/l1-autofix-2026-11-28/).
 - Poll mode = full unattended loop for judges without webhook infrastructure
   (`python -m agentkit.trigger poll`).
-- GAP: demo video (the scored unattended-run proof) not yet recorded —
-  without it the trace is the only autonomy evidence. Meet records per
-  docs/demo-script.md; biggest remaining deliverable.
+- DONE (2026-11-28): demo video recorded and committed — `demo_video.mp4`,
+  2 min 34 s, agent-produced from real evidence (title, live unattended run,
+  trap refusal, kill switch mid-run, autonomous L1 fix). Narrated; script
+  mapping in docs/demo-script.md.
 
 ## Usefulness 25%
 - Real job: PR security triage + CI-failure first response, the exact task
@@ -43,10 +44,9 @@ our own audit — the traces and PRs are the receipts.
 - Hash-chained JSONL traces with --verify (audit-trail bonus lane).
 
 ## Demo 10%
-- GAP: not yet recorded. Script complete (docs/demo-script.md) with four
-  real evidence segments ready to replay: poll run, trap refusal, kill
-  switch mid-run (recorded live in shift 2), PR #2 autonomous fix,
-  PR #3 CI diagnosis. ≤ 3 min constraint accounted for.
+- DONE (2026-11-28): `demo_video.mp4` committed in-repo, 2 min 34 s (≤ 3 min).
+  Four real evidence segments on tape: live unattended run, trap refusal,
+  kill switch mid-run, PR #2 autonomous fix; narrated end-to-end.
 
 ## Safety bonus +4
 - Guardrails +1: destructive actions blocked IN CODE (hard refusals in
@@ -57,7 +57,8 @@ our own audit — the traces and PRs are the receipts.
 - Audit trail +1: hash-chained traces, chain verified on every evidence run.
 
 ## Bottom line
-Code and evidence are freeze-ready except ONE deliverable: the ≤3-min demo
-video (Meet records; script + checklist ready). Submission-form URL still
+Code, evidence, and the demo video are ALL freeze-ready as of 2026-11-28
+(every rubric axis + all four safety-bonus lanes now have committed proof,
+including the recorded demo). Submission-form URL still
 needed from Discord/email relay. Remaining hours before freeze should go to:
 (1) demo recording, (2) final anatomy re-check, (3) no risky code churn.

@@ -62,6 +62,13 @@ whitelisted trivial fixes. Everything else is drafted, never pushed.
   is masked in all output. Results + 40 verified trace files:
   `tests/trap_pack/cross-track/RESULTS.md`.
 
+## Demo video
+
+`demo_video.mp4` (2 min 34 s, in this repo) — one unattended run start to
+finish: trigger (webhook + poll), triage with live LLM, hostile trap refused
+as data, kill switch cancelling a run mid-flight, and the autonomous L1 fix
+push to PR #2. Full script: `docs/demo-script.md`.
+
 ## Quick start (<15 min)
 
 ```bash
