@@ -51,6 +51,22 @@ INJECTION_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("demands secrecy from the user / team",
      re.compile(r"do not loop in|don'?t tell (?:anyone|the user)|"
                 r"keep this (?:confidential|secret|between us)", re.I)),
+    # Generic family added 2026-11-28 after a live-run miss (see trace
+    # 20261128-111455): the variants below slip past phrasing-specific rules.
+    ("disregards previous instructions (override attempt)",
+     re.compile(r"disregard|ignore|forget (?:all|any|your|the|previous)|"
+                r"\[?system override\]?|developer mode", re.I)),
+    ("urges immediate approve-and-merge",
+     re.compile(r"approve (?:and|then) merge|merge (?:this )?"
+                r"(?:pr|pull request|change)[^.\n]{0,40}"
+                r"(?:immediately|right away|asap|now)", re.I)),
+    ("requests echoing a credential back",
+     re.compile(r"post (?:the )?(?:api )?key|reply with the "
+                r"(?:key|token|secret|credential)|"
+                r"read (?:them|it) and confirm", re.I)),
+    ("points the agent at a credential file",
+     re.compile(r"credentials? (?:are|is) in|credentials?\.txt|"
+                r"(?:the )?secrets? (?:file|directory)", re.I)),
 ]
 
 SECRET_SCAN_RE = re.compile(
