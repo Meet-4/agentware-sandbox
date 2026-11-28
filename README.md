@@ -78,6 +78,13 @@ python -m agentkit --demo         # bundled trap replay, end-to-end, no GitHub n
 python -m agentkit --pr 418 --repo owner/name   # live triage of a real PR
 ```
 
+Or run the whole judge demo in one command — tests, trap replay with SARIF
+output, hash-chain trace verification, and a live kill-switch halt:
+
+```bash
+bash scripts/demo.sh
+```
+
 See `AGENT.md` for architecture, `SAFETY.md` for the guardrails enforced
 in code, `traces/` for real run logs, `tests/` for trap-pack results.
 
