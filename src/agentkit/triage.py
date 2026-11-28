@@ -181,7 +181,10 @@ def triage(case: ReviewCase) -> ReviewCase:
 
 def heuristic_review(case: ReviewCase) -> str:
     """No-LLM review draft: full findings, deterministic wording."""
-    lines = [f"## Automated PR triage — {case.title or case.kind}",
+    _KIND = {"pull_request": "PR", "issue": "issue", "ci_failure": "CI failure",
+             "raw_input": "input"}
+    lines = [f"## Automated {_KIND.get(case.kind, case.kind)} triage — "
+             f"{case.title or case.kind}",
              "", "Deterministic findings (static triage, no model output):"]
     if case.findings:
         lines += [f"- {x.line()}" for x in case.findings]

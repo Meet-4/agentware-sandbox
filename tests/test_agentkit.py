@@ -138,5 +138,5 @@ def test_scan_raw_file_fences_cross_track_injection(tmp_path):
     assert "prompt-injection" in cats
     assert "secret-material" in cats
     # nothing posted: dry run only
-    assert res["review"].startswith("## Automated PR triage")
+    assert res["review"].startswith("## Automated input triage")
     assert "AKIAIOSFODNN7EXAMPLE" not in res["review"]

@@ -39,6 +39,10 @@ class GitHubClient:
         self._assert_target(repo)
         return self._req("GET", f"/repos/{repo}/pulls/{number}")
 
+    def get_issue(self, repo: str, number: int) -> dict:
+        self._assert_target(repo)
+        return self._req("GET", f"/repos/{repo}/issues/{number}")
+
     def post_comment(self, repo: str, number: int, body: str) -> dict:
         self._assert_target(repo)
         return self._req("POST", f"/repos/{repo}/issues/{number}/comments",

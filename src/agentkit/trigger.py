@@ -88,6 +88,19 @@ def triage_ci_failure(repo: str, check_run_id: int, pr_number: int,
     return run(case, cfg, out_dir, gh=gh, repo=repo, pr_number=pr_number)
 
 
+def triage_issue(repo: str, number: int, cfg: dict, out_dir: Path,
+                 registry: RunRegistry) -> dict:
+    """Unattended run for one newly-opened issue. Issue text is untrusted
+    data (same fence as PRs): injections become findings, the reply is a
+    comment on the issue thread (L0 — never closes/edits the issue)."""
+    gh = GitHubClient(cfg)
+    issue = gh.get_issue(repo, number)
+    case = ReviewCase(kind="issue", title=issue.get("title", ""),
+                      author=issue.get("user", {}).get("login", ""),
+                      description=issue.get("body") or "")
+    return run(case, cfg, out_dir, gh=gh, repo=repo, pr_number=number)
+
+
 def triage_pr(repo: str, number: int, cfg: dict, out_dir: Path,
               registry: RunRegistry) -> dict:
     """Full unattended run for one PR. Records itself in the registry so
@@ -186,6 +199,39 @@ def make_handler(cfg: dict, out_dir: Path, registry: RunRegistry):
             else:
                 self._json(404, {"error": "not found"})
 
+        def _handle_issue(self, payload: dict, cfg: dict,
+                          out_dir: Path, registry: RunRegistry) -> None:
+            """issues webhook: only action=opened wakes the agent; it may
+            reply with a comment and labels, never close/edit the issue."""
+            if payload.get("action") != "opened":
+                self._json(200, {"ignored": f"action={payload.get('action')!r}"})
+                return
+            num = str((payload.get("issue") or {}).get("number", ""))
+            if not _INT_RE.match(num):
+                self._json(400, {"error": "bad issue number"})
+                return
+            number = int(num)
+
+            def work():
+                try:
+                    res = triage_issue(
+                        cfg.get("TARGET_REPO", ""), number,
+                        cfg, out_dir, registry)
+                except Exception as e:
+                    with registry.lock:
+                        registry.history.append(
+                            {"issue": number, "status": "error", "error": repr(e)})
+                    return
+                with registry.lock:
+                    registry.history.append(
+                        {"issue": number, "status": res["status"],
+                         "run_id": res["run_id"],
+                         "findings": len(res["findings"])})
+
+            threading.Thread(target=work, daemon=True,
+                             name=f"triage-issue-{number}").start()
+            self._json(202, {"accepted": True, "issue": number})
+
         def do_POST(self):
             if self.path != "/webhook":
                 self._json(404, {"error": "not found"})
@@ -214,6 +260,9 @@ def make_handler(cfg: dict, out_dir: Path, registry: RunRegistry):
                 return
             if event == "check_run":
                 self._handle_check_run(payload, cfg, out_dir, registry)
+                return
+            if event == "issues":
+                self._handle_issue(payload, cfg, out_dir, registry)
                 return
             if payload.get("action") != "opened":
                 self._json(200, {"ignored": f"action={payload.get('action')!r}"})
@@ -295,23 +344,30 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("serve", help="webhook + kill-switch HTTP server")
     s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--repo", help="override/set TARGET_REPO (owner/name)")
     s.add_argument("--env", type=Path, default=Path(".env"))
     s.add_argument("--out", type=Path, default=Path("."))
     p = sub.add_parser("poll", help="poll TARGET_REPO open PRs (no webhook)")
     p.add_argument("--interval", type=int, default=300)
     p.add_argument("--once", action="store_true")
+    p.add_argument("--repo", help="override/set TARGET_REPO (owner/name)")
     p.add_argument("--env", type=Path, default=Path(".env"))
     p.add_argument("--out", type=Path, default=Path("."))
     p.add_argument("--state", type=Path, default=Path(".poll_state"))
     args = ap.parse_args(argv)
 
+    cfg = load_env(args.env)
+    if getattr(args, "repo", None):
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
+            print(f"invalid --repo {args.repo!r} (expected owner/name)")
+            return 2
+        # CLI flag OVERRIDES .env: explicit command beats stale file, and
+        # every downstream client re-asserts the target on each call.
+        cfg["TARGET_REPO"] = args.repo
+    (args.out / "traces").mkdir(parents=True, exist_ok=True)
     if args.cmd == "serve":
-        cfg = load_env(args.env)
-        (args.out / "traces").mkdir(parents=True, exist_ok=True)
         serve(cfg, args.out, args.port)
         return 0
-    cfg = load_env(args.env)
-    (args.out / "traces").mkdir(parents=True, exist_ok=True)
     poll(cfg, args.out, args.interval, args.state, args.once)
     return 0
 

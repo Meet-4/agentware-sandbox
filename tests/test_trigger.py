@@ -210,3 +210,63 @@ def test_check_run_wrong_repo_rejected(tmp_path):
             _cr_payload(repository={"full_name": "evil/other"}),
             headers={"X-GitHub-Event": "check_run"})
         assert code == 403
+
+
+# ---- issue (issues event) trigger ----------------------------------------
+
+def _issue_payload(**over):
+    p = {
+        "action": "opened",
+        "repository": {"full_name": "Meet-4/agentware-sandbox"},
+        "issue": {"number": 77, "title": "build fails", "body": "help"},
+    }
+    p.update(over)
+    return json.dumps(p)
+
+
+def test_issue_opened_accepted(tmp_path):
+    from agentkit.trigger import RunRegistry
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook", _issue_payload(),
+            headers={"X-GitHub-Event": "issues"})
+        assert code == 202 and body["accepted"] is True
+        assert body["issue"] == 77
+
+
+def test_issue_non_opened_ignored(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _issue_payload(action="closed"),
+            headers={"X-GitHub-Event": "issues"})
+        assert code == 200 and "ignored" in body
+
+
+def test_issue_bad_number_rejected(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _issue_payload(issue={"number": "rm -rf", "title": "x"}),
+            headers={"X-GitHub-Event": "issues"})
+        assert code == 400
+
+
+def test_issue_wrong_repo_rejected(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _issue_payload(repository={"full_name": "evil/other"}),
+            headers={"X-GitHub-Event": "issues"})
+        assert code == 403
+
+
+def test_repo_flag_validation(tmp_path, monkeypatch):
+    from agentkit.trigger import main as trigger_main
+    # invalid repo shape exits before the server ever binds
+    assert trigger_main(["serve", "--repo", "not a repo",
+                         "--out", str(tmp_path)]) == 2
