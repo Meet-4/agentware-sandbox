@@ -85,7 +85,7 @@ class GitHubClient:
         import urllib.request
         self._assert_target(repo)
         m = re.fullmatch(
-            rf"https://github\.com/{re.escape(repo)}/actions/runs/\d+/jobs/(\d+)",
+            rf"https://github\.com/{re.escape(repo)}/actions/runs/\d+/jobs?/(\d+)",
             details_url or "")
         if not m:
             raise PermissionError(
