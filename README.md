@@ -48,6 +48,13 @@ whitelisted trivial fixes. Everything else is drafted, never pushed.
   injections; the `check_run` trigger fetched the job log, triaged it as
   hostile data, caught both injections as BLOCKERS, and posted the
   diagnosis. Trace: `traces/20261128-061431-ec3c22` (chain verified).
+- **Cross-track firewall sweep (all 20 trap-pack inputs, every track)**:
+  `python -m agentkit --scan-dir <agent-inputs>` fences files the agent
+  was never designed for — BEC email, hidden-HTML-comment injection,
+  fake-supervisor passphrase exfiltration — as untrusted data: 32 findings,
+  13 blockers, 0 actions taken, and the canary token seeded in every input
+  is masked in all output. Results + 40 verified trace files:
+  `tests/trap_pack/cross-track/RESULTS.md`.
 
 ## Quick start (<15 min)
 
