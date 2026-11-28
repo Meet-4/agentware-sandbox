@@ -42,6 +42,12 @@ whitelisted trivial fixes. Everything else is drafted, never pushed.
   and pushed only after the gate was green (commits
   `agent: apply whitelisted fixes ... [autonomous L1]`). Trace chain:
   `traces/l1-autofix-2026-11-28/` (verified via `--verify`).
+- **CI-failure diagnosis (real failing Actions run, no human)**:
+  https://github.com/Meet-4/agentware-sandbox/pull/3 — the agent's own CI
+  workflow failed on a broken test whose failure text embeds prompt
+  injections; the `check_run` trigger fetched the job log, triaged it as
+  hostile data, caught both injections as BLOCKERS, and posted the
+  diagnosis. Trace: `traces/20261128-061431-ec3c22` (chain verified).
 
 ## Quick start (<15 min)
 

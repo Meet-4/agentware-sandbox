@@ -9,7 +9,8 @@ hardcoded to draft-only, and the kill switch can cancel mid-run.
 ## Pipeline (trigger to result)
 
 ```
-trigger (webhook | CLI | polling | trap replay)
+trigger (pull_request-opened webhook | check_run-completed+failure webhook
+         | CLI | polling | trap replay)
   → normalize input into a ReviewCase (untrusted DATA)
   → static triage (pure code, no LLM):
       diff parse · risky-path detector · secret scanner ·
@@ -20,6 +21,18 @@ trigger (webhook | CLI | polling | trap replay)
              whitelisted trivial fix committed+pushed only at L1
   → trace: hash-chained JSONL + human-readable summary, always written
 ```
+
+## Triggers
+- **PR opened** (`pull_request` webhook, action=opened): full PR triage.
+- **CI failure** (`check_run` webhook, action=completed, conclusion=failure,
+  with an attached PR): the failing job's log tail (8 KB) is fetched and
+  triaged as hostile data — CI logs can carry prompt injections (the live
+  demo run caught two embedded in a real pytest failure output:
+  https://github.com/Meet-4/agentware-sandbox/pull/3, traces
+  `20261128-061431-ec3c22`). Only repo/int-validated selectors are taken
+  from the payload; a failed run with no PR is ignored.
+- **Polling** (judge mode, no public endpoint): open PRs, deduped on disk.
+- **Trap replay** (CLI): trap-pack files as ReviewCases.
 
 ## Tools & permissions
 | Tool | Scope | Permission |

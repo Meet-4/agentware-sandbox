@@ -36,6 +36,33 @@ defaults 25 calls / 10 min / $0.50). Exceeded → graceful STOP, trace says so.
   mid-flight via `/stop`, audit entry written, chain verifies.
 Either cancels pending work immediately; an audit entry is always written.
 
+## L1 autonomous fix gate (enforced in code, `fixer.py` + `pipeline.py`)
+Order of operations for every fix attempt; a failure at any step aborts the
+fix path without failing the already-posted review:
+1. **Classify** — only three whitelisted fix classes, detected by pure code:
+   docs-typo (dictionary, capitalization-preserving, plural-aware),
+   lint-fix (trailing whitespace, final newline), missing-import
+   (case-mismatch only). Anything else → draft-only.
+2. **Isolate** — a fresh git worktree from `refs/pull/N/head`, never the
+   working tree; risky paths, `.github/`, manifests and removals/renames are
+   never auto-touched.
+3. **Gate** — the project's own test suite (compile + pytest, offline,
+   timeout) must pass inside the worktree.
+4. **Push** — only `HEAD:refs/heads/<PR branch>`, never `--force`, never
+   `main`; push happens only after the gate reported OK, still inside the
+   budget + kill-switch window.
+Evidence: PR #2 (https://github.com/Meet-4/agentware-sandbox/pull/2) — two
+fix commits pushed autonomously, zero human input; trace chains verify.
+
+## CI-failure trigger (check_run)
+Webhook `check_run` events wake the agent only when action=completed AND
+conclusion=failure AND a PR is attached. The failing job's log tail (8 KB)
+is fetched and treated as hostile input: injection patterns in log lines are
+reported as blockers, never followed. A failed run with no PR (e.g. a push
+build) is ignored. Live evidence: PR #3 comment + trace
+`traces/20261128-061431-ec3c22` — two injections embedded in a real pytest
+failure output both caught.
+
 ## Trigger modes (both unattended)
 - `python -m agentkit.trigger serve` — webhook server: POST /webhook
   (HMAC-SHA256 verified when WEBHOOK_SECRET is set, repo-gated to
