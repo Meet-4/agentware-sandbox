@@ -1,0 +1,1 @@
+agentkit trigger server on 127.0.0.1:8765 (webhook POST /webhook, kill GET /stop)
