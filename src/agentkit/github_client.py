@@ -63,3 +63,48 @@ class GitHubClient:
         q = urllib.parse.quote(path, safe="/")
         data = self._req("GET", f"/repos/{repo}/contents/{q}?ref={ref}")
         return base64.b64decode(data["content"]).decode(errors="replace")
+
+    # ---- CI-failure path -------------------------------------------------
+
+    def get_check_run(self, repo: str, check_run_id: int) -> dict:
+        """One check run by id (name, conclusion, details_url, ...)."""
+        self._assert_target(repo)
+        return self._req("GET", f"/repos/{repo}/check-runs/{check_run_id}")
+
+    def get_job_log(self, repo: str, details_url: str,
+                    max_chars: int = 8000) -> str:
+        """Tail of a failed job's log.
+
+        details_url comes from the GitHub API (not the raw webhook body) but
+        is still treated as untrusted: it must point at
+        github.com/<TARGET_REPO>/actions/runs/N/jobs/M or it is refused.
+        The log itself is hostile text — the caller must keep it as data.
+        """
+        import re
+        import urllib.parse
+        import urllib.request
+        self._assert_target(repo)
+        m = re.fullmatch(
+            rf"https://github\.com/{re.escape(repo)}/actions/runs/\d+/jobs/(\d+)",
+            details_url or "")
+        if not m:
+            raise PermissionError(
+                f"refusing details_url {details_url!r} "
+                "(not an actions job URL for TARGET_REPO)")
+        # the endpoint 302s to a signed blob URL; never forward the token there
+        class _NoAuthRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                r = super().redirect_request(req, fp, code, msg,
+                                             headers, newurl)
+                if r is not None:
+                    del r.headers["Authorization"]
+                    r.unverifiable = True
+                return r
+        opener = urllib.request.build_opener(_NoAuthRedirect)
+        req = urllib.request.Request(
+            f"{self.API}/repos/{repo}/actions/jobs/{m.group(1)}/logs",
+            headers={"Authorization": f"Bearer {self.token}",
+                     "User-Agent": "agentkit-triage/0.1"})
+        with opener.open(req, timeout=60) as resp:
+            log = resp.read().decode(errors="replace")
+        return log[-max_chars:]

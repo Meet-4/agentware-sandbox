@@ -65,6 +65,29 @@ class RunRegistry:
         return 1
 
 
+def triage_ci_failure(repo: str, check_run_id: int, pr_number: int,
+                      cfg: dict, out_dir: Path,
+                      registry: RunRegistry) -> dict:
+    """Unattended run for one failed check run: fetch the failing job's log
+    tail, triage it as hostile data (CI logs can carry prompt injections),
+    and post the diagnosis on the PR it belongs to."""
+    gh = GitHubClient(cfg)
+    check = gh.get_check_run(repo, check_run_id)
+    log = ""
+    try:
+        log = gh.get_job_log(repo, check.get("output", {}).get("details_url", "")
+                             or check.get("details_url", ""))
+    except Exception:
+        log = ""  # a private/missing log must not abort: triage on name alone
+    case = ReviewCase(kind="ci_failure",
+                      title=f"CI failure: {check.get('name', 'unknown check')}",
+                      author=check.get("app", {}).get("slug", "") or "actions",
+                      description=(check.get("output", {}) or {}).get(
+                          "title", "") or "",
+                      ci_log=log)
+    return run(case, cfg, out_dir, gh=gh, repo=repo, pr_number=pr_number)
+
+
 def triage_pr(repo: str, number: int, cfg: dict, out_dir: Path,
               registry: RunRegistry) -> dict:
     """Full unattended run for one PR. Records itself in the registry so
@@ -103,6 +126,52 @@ def make_handler(cfg: dict, out_dir: Path, registry: RunRegistry):
             self.end_headers()
             self.wfile.write(body)
 
+        def _handle_check_run(self, payload: dict, cfg: dict,
+                              out_dir: Path, registry: RunRegistry) -> None:
+            """check_run webhook: only completed+failure with an attached PR
+            (first PR only, int-validated) wakes the agent."""
+            if payload.get("action") != "completed":
+                self._json(200, {"ignored": f"action={payload.get('action')!r}"})
+                return
+            cr = payload.get("check_run") or {}
+            if cr.get("conclusion") != "failure":
+                self._json(200, {"ignored": f"conclusion={cr.get('conclusion')!r}"})
+                return
+            cid = str(cr.get("id", ""))
+            if not _INT_RE.match(cid):
+                self._json(400, {"error": "bad check_run id"})
+                return
+            prs = cr.get("pull_requests") or []
+            num = str((prs[0] or {}).get("number", "")) if prs else ""
+            if not _INT_RE.match(num):
+                # failed run with no PR attached (e.g. push build): nothing
+                # to comment on — ignore, do not 400 non-PR events
+                self._json(200, {"ignored": "no pull request attached"})
+                return
+            check_run_id, number = int(cid), int(num)
+
+            def work():
+                try:
+                    res = triage_ci_failure(
+                        cfg.get("TARGET_REPO", ""), check_run_id, number,
+                        cfg, out_dir, registry)
+                except Exception as e:
+                    with registry.lock:
+                        registry.history.append(
+                            {"check_run": check_run_id, "pr": number,
+                             "status": "error", "error": repr(e)})
+                    return
+                with registry.lock:
+                    registry.history.append(
+                        {"check_run": check_run_id, "pr": number,
+                         "status": res["status"], "run_id": res["run_id"],
+                         "findings": len(res["findings"])})
+
+            threading.Thread(target=work, daemon=True,
+                             name=f"triage-ci-{check_run_id}").start()
+            self._json(202, {"accepted": True, "check_run": check_run_id,
+                             "pr": number})
+
         def do_GET(self):
             if self.path == "/health":
                 with registry.lock:
@@ -137,15 +206,19 @@ def make_handler(cfg: dict, out_dir: Path, registry: RunRegistry):
             except json.JSONDecodeError:
                 self._json(400, {"error": "invalid json"})
                 return
+            event = self.headers.get("X-GitHub-Event", "pull_request")
             # UNTRUSTED payload: extract only validated selectors.
-            if payload.get("action") != "opened":
-                self._json(200, {"ignored": f"action={payload.get('action')!r}"})
-                return
             repo = ((payload.get("repository") or {}).get("full_name") or "")
-            num = str((payload.get("pull_request") or {}).get("number", ""))
             if repo != cfg.get("TARGET_REPO", ""):
                 self._json(403, {"error": f"refusing repo {repo!r}"})
                 return
+            if event == "check_run":
+                self._handle_check_run(payload, cfg, out_dir, registry)
+                return
+            if payload.get("action") != "opened":
+                self._json(200, {"ignored": f"action={payload.get('action')!r}"})
+                return
+            num = str((payload.get("pull_request") or {}).get("number", ""))
             if not _INT_RE.match(num):
                 self._json(400, {"error": "bad PR number"})
                 return

@@ -141,3 +141,72 @@ def test_cost_field_in_trace(tmp_path):
     drafted = [e for e in events if e["event"] == "review_drafted"][0]
     assert "cost_usd" in drafted and drafted["cost_usd"] == 0.0
     assert drafted["llm_calls"] == 0
+
+
+# ---- CI-failure (check_run) trigger -------------------------------------
+
+def _cr_payload(**over):
+    p = {
+        "action": "completed",
+        "repository": {"full_name": "Meet-4/agentware-sandbox"},
+        "check_run": {
+            "id": 12345, "conclusion": "failure", "name": "pytest",
+            "pull_requests": [{"number": 7}],
+        },
+    }
+    p.update(over)
+    return json.dumps(p)
+
+
+def test_check_run_failure_accepted(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req("POST", f"http://127.0.0.1:{port}/webhook",
+                          _cr_payload(),
+                          headers={"X-GitHub-Event": "check_run"})
+        assert code == 202 and body["accepted"] is True
+        assert body["pr"] == 7
+
+
+def test_check_run_success_ignored(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _cr_payload(check_run={"id": 1, "conclusion": "success",
+                                   "name": "x", "pull_requests": []}),
+            headers={"X-GitHub-Event": "check_run"})
+        assert code == 200 and "ignored" in body
+
+
+def test_check_run_no_pr_ignored(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _cr_payload(check_run={"id": 1, "conclusion": "failure",
+                                   "name": "x", "pull_requests": []}),
+            headers={"X-GitHub-Event": "check_run"})
+        assert code == 200 and "ignored" in body
+
+
+def test_check_run_bad_id_rejected(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _cr_payload(check_run={"id": "../../etc", "conclusion": "failure",
+                                   "name": "x",
+                                   "pull_requests": [{"number": 7}]}),
+            headers={"X-GitHub-Event": "check_run"})
+        assert code == 400
+
+
+def test_check_run_wrong_repo_rejected(tmp_path):
+    for httpd in _server(CFG, tmp_path):
+        port = httpd.server_address[1]
+        code, body = _req(
+            "POST", f"http://127.0.0.1:{port}/webhook",
+            _cr_payload(repository={"full_name": "evil/other"}),
+            headers={"X-GitHub-Event": "check_run"})
+        assert code == 403
