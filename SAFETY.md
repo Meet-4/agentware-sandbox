@@ -77,3 +77,6 @@ failure output both caught.
 (`prev_hash`), written even when the run fails or is killed. Plus a
 human-readable `traces/<run-id>.md` summary. Any tampering with an entry
 breaks the chain and is detectable by `python -m agentkit verify <trace>`.
+
+## Platform-level enforcement
+- `main` is branch-protected at GitHub: force-push **disabled**, branch deletion **disabled**, linear history **required** (verified via API). The no-force-push guarantee is enforced by the platform, not just this document.
