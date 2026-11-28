@@ -48,6 +48,12 @@ whitelisted trivial fixes. Everything else is drafted, never pushed.
   injections; the `check_run` trigger fetched the job log, triaged it as
   hostile data, caught both injections as BLOCKERS, and posted the
   diagnosis. Trace: `traces/20261128-061431-ec3c22` (chain verified).
+- **check_run webhook LIVE FIRE (webhook path, real GitHub)**: re-ran the real
+  failing workflow on PR #3 (new check run 140871785377), then POSTed a
+  GitHub-shaped `check_run.completed` webhook through the trigger server:
+  HMAC-verified → agent fetched the real job log → 2 injection BLOCKERS →
+  comment posted, all unattended (~35 s). Tampered signature: rejected 401.
+  Evidence: `traces/webhook-checkrun-fire-2026-11-28/RESULTS.md`.
 - **Cross-track firewall sweep (all 20 trap-pack inputs, every track)**:
   `python -m agentkit --scan-dir <agent-inputs>` fences files the agent
   was never designed for — BEC email, hidden-HTML-comment injection,

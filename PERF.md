@@ -3,6 +3,16 @@
 All times on Meet's machine (Windows 11, Python 3.14, stdlib-only agent).
 "ref" = heuristic-only mode; "LLM" = with model commentary (sarvam/glm5.3).
 
+## 2026-11-28 10:34 IST — check_run webhook live fire (shift 6)
+- Webhook path proven against real GitHub: rerun of PR #3's failing workflow →
+  new check run 140871785377 → signed `check_run.completed` webhook POST →
+  real log fetch + triage + comment, **~35 s end-to-end** (vs ~13 s direct
+  invocation in shift 4; delta = HTTP round-trips through the trigger server).
+- Negative controls: tampered HMAC → 401 (rejected before parsing);
+  no-PR payload → ignored, no run consumed.
+- One 401 mid-session was operator error (empty token in the scratch env
+  file), not an agent bug; retried clean, first try green.
+
 ## 2026-11-28 06:15 IST — CI-failure trigger (check_run) end-to-end
 - Live run against REAL failed check run 140806051220 (PR #3, sandbox repo,
   GitHub Actions pytest job): fetch check run + 8 KB log tail + triage +
