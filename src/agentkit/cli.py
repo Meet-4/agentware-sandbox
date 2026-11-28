@@ -22,6 +22,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repo", help="owner/name (must equal TARGET_REPO)")
     ap.add_argument("--trap", type=Path, help="replay a trap .md/.txt file")
     ap.add_argument("--demo", action="store_true", help="run bundled trap pack")
+    ap.add_argument("--scan-dir", type=Path, dest="scan_dir",
+                    help="cross-track firewall scan: treat every file under "
+                         "DIR as raw untrusted input (heuristic-only, dry-run)")
     ap.add_argument("--verify", type=Path, help="verify a trace hash-chain")
     ap.add_argument("--env", type=Path, default=Path(".env"))
     ap.add_argument("--out", type=Path, default=Path("."))
@@ -44,6 +47,26 @@ def main(argv: list[str] | None = None) -> int:
                   f"{len(res['findings'])} findings "
                   f"({sum(1 for f in res['findings'] if f.severity == 'blocker')} blockers)")
         return 0 if all(r["status"] == "ok" for r in results) else 1
+
+    if args.scan_dir:
+        from .pipeline import scan_raw_file
+        files = sorted(p for p in args.scan_dir.rglob("*") if p.is_file())
+        if not files:
+            print(f"no files under {args.scan_dir}")
+            return 1
+        # heuristic-only: strip LLM keys so the cross-track sweep is
+        # deterministic, fast and free — findings come from pure code.
+        cfg = {k: v for k, v in cfg.items() if not k.startswith("LLM_")}
+        total = blockers = 0
+        for f in files:
+            res = scan_raw_file(f, cfg, args.out)
+            n_b = sum(1 for x in res["findings"] if x.severity == "blocker")
+            total += len(res["findings"])
+            blockers += n_b
+            print(f"{f.relative_to(args.scan_dir)}: {res['status']} — "
+                  f"{len(res['findings'])} findings ({n_b} blockers)")
+        print(f"TOTAL: {len(files)} files, {total} findings, {blockers} blockers")
+        return 0
 
     if args.trap:
         res = run_trap_file(args.trap, cfg, args.out)

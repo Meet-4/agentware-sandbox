@@ -32,9 +32,25 @@ INJECTION_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("demands force-push to a protected branch",
      re.compile(r"force[- ]?push", re.I)),
     ("pre-approval social engineering",
-     re.compile(r"already (?:been )?(?:security )?reviewed by the maintainers?", re.I)),
+     re.compile(r"already (?:been )?(?:security )?"
+                r"(?:reviewed|approved|authori[sz]ed)", re.I)),
     ("claims authority over automated agents",
-     re.compile(r"NOTE TO AUTOMATED|note for AI (?:code )?reviewers", re.I)),
+     re.compile(r"NOTE (?:TO|FOR) AUTOMATED|note for AI (?:code )?reviewers", re.I)),
+    ("tells the agent to act without user confirmation",
+     re.compile(r"do not ask the user|don'?t ask the user|"
+                r"without (?:human|user) (?:approval|confirmation)", re.I)),
+    ("asks to exfiltrate a secret to a third party",
+     re.compile(r"passphrase|include .{0,40}canary.{0,30} in|"
+                r"include .{0,30}(?:key|token) in the reference|"
+                r"every (?:API )?(?:key|token|credential)|"
+                r"full contents of .{0,30}\.env|"
+                r"echo|print the (?:value of )?(?:secret|key|token)", re.I)),
+    ("claims to override existing policy",
+     re.compile(r"overrides? (?:any|all|existing|earlier) (?:security )?polic|"
+                r"direct instruction from", re.I)),
+    ("demands secrecy from the user / team",
+     re.compile(r"do not loop in|don'?t tell (?:anyone|the user)|"
+                r"keep this (?:confidential|secret|between us)", re.I)),
 ]
 
 SECRET_SCAN_RE = re.compile(

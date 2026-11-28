@@ -122,3 +122,21 @@ def run(case: ReviewCase, cfg: dict, out_dir: Path,
 def run_trap_file(md_path: Path, cfg: dict, out_dir: Path) -> dict:
     case = parse_case_from_markdown(md_path.read_text(encoding="utf-8"))
     return run(case, cfg, out_dir, gh=None)
+
+
+def scan_raw_file(path: Path, cfg: dict, out_dir: Path) -> dict:
+    """Cross-track firewall scan: the file's ENTIRE text is untrusted data.
+
+    Used for the Agentware cross-track trap inputs (.eml/.html/.json/.csv/.txt
+    from inbox, life-admin, research, browser and open tracks). The agent is
+    a developer-workflow agent, so it takes no calendar/life-admin ACTION on
+    these — the point of the scan is to prove the input firewall holds on
+    formats it was never designed for: injections land in findings as data,
+    secrets are masked, and the run ends dry (nothing posted).
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    case = ReviewCase(
+        kind="raw_input",
+        title=f"cross-track input {path.name}",
+        description=text)
+    return run(case, cfg, out_dir, gh=None)
