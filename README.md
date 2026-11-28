@@ -88,6 +88,14 @@ bash scripts/demo.sh
 See `AGENT.md` for architecture, `SAFETY.md` for the guardrails enforced
 in code, `traces/` for real run logs, `tests/` for trap-pack results.
 
+**Heuristic vs. LLM mode, labelled:** runs with `LLM_API_KEY` set are live-LLM
+runs (labelled in the trace); runs without it — including every bundled
+`--demo`/trap replay — are **heuristic-only**: the full deterministic
+triage and review, no model calls, $0 cost. Each trace records which mode
+it ran in; mock/heuristic outputs are always labelled as such. Codespaces
+one-click route: open the repo in a Codespace (`.devcontainer/`), tests run
+on container build.
+
 ## License
 
 MIT (see LICENSE).

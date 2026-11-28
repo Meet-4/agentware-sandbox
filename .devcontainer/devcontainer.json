@@ -1,0 +1,20 @@
+{
+  "name": "agentkit",
+  "build": { "dockerfile": "Dockerfile" },
+  "postCreateCommand": "pip install -e . && python -m pytest -q",
+  "forwardPorts": [8765],
+  "portsAttributes": {
+    "8765": {
+      "label": "agentkit trigger server (webhook + kill switch)",
+      "protocol": "http"
+    }
+  },
+  "remoteEnv": {
+    "PYTHONUNBUFFERED": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  }
+}
