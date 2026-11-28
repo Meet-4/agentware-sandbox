@@ -256,27 +256,33 @@ def serve(cfg: dict, out_dir: Path, port: int) -> None:
 
 def poll(cfg: dict, out_dir: Path, interval: int,
          state_path: Path, once: bool = False) -> None:
-    """No-webhook mode for judges: watch TARGET_REPO's open PRs."""
+    """No-webhook mode for judges: watch TARGET_REPO's open PRs.
+
+    Dedup key is ``number:head_sha`` (not the bare number): a PR with new
+    commits is re-triaged, an unchanged one is never re-commented on.
+    """
     gh = GitHubClient(cfg)
     repo = cfg.get("TARGET_REPO", "")
-    seen: set[int] = set()
+    seen: set[str] = set()
     if state_path.exists():
-        seen = {int(x) for x in
+        seen = {x.strip() for x in
                 state_path.read_text(encoding="utf-8").split() if x.strip()}
     while True:
         try:
             data = gh._req("GET", f"/repos/{repo}/pulls?state=open&per_page=50")
             for pr in data:
                 n = pr["number"]
-                if n in seen:
+                head = (pr.get("head") or {}).get("sha") or "unknown"
+                key = f"{n}:{head[:12]}"
+                if key in seen:
                     continue
-                print(f"new PR #{n}: {pr.get('title', '')!r}", flush=True)
+                print(f"PR #{n} @ {head[:12]}: {pr.get('title', '')!r}", flush=True)
                 res = triage_pr(repo, n, cfg, out_dir, RunRegistry(out_dir))
                 print(f"PR #{n}: {res['status']} — "
                       f"{len(res['findings'])} findings", flush=True)
-                seen.add(n)
+                seen.add(key)
                 state_path.write_text(
-                    " ".join(str(x) for x in sorted(seen)), encoding="utf-8")
+                    " ".join(sorted(seen)), encoding="utf-8")
         except Exception as e:
             print(f"poll cycle failed (will retry): {e!r}", flush=True)
         if once:
